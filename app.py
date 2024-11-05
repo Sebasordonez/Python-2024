@@ -8,74 +8,85 @@ import pandas as pd
 import pathlib
 import dash_bootstrap_components as dbc
 
+
 #Dashboard financiero
 
-#iniciar Dash
-app = dash.Dash(external1_stylesheets=[dbc.themes.BOOTSTAP])
-serever = app.server
+#iniciar el dash
+app = dash.Dash(external_stylesheets=[dbc.themes.BOOTSTRAP])
 
-app.title="Dashboard financiero"
+server=app.server
 
-#data a usar 
-df = pd.read.csv("empresas.csv")
+app.title="Dasboard Financiero"
 
-sales_list=["Total Revenue","Cost of Revenues","Gross Profit","Total Operating Expense","Operating Income","Net Income",
-            "Shares Outstanding","Close Stock Price","Market Cap", "Multiple of Revenue"]
+#data a usar:
+df=pd.read_csv("empresas.csv")
 
-#app layout 
+#armar lista de las variables a usar
+
+sales_list = ["Total Revenues", "Cost of Revenues", "Gross Profit", "Total Operating Expenses",
+             "Operating Income", "Net Income", "Shares Outstanding", "Close Stock Price",
+             "Market Cap", "Multiple of Revenue"]
+
+#app layout
 
 app.layout = html.Div([
+
+    #html de fila con dropdowns
     html.Div([html.Div([
+        #html del primer dropdown para elegir las empresas que quiero ver en el dashboard
         html.Div(dcc.Dropdown(
-            id="stockdropdown",value=["Amazon","Tesla","Microsoft","Apple","Google"],clearable=False,multi=True,
-            options=[{"label":x,"value":x} for x in sorted(df.Company.unique())]),className="six columns",
-            style={"width":"50%"}),
+            id="stockdropdown", value =["Amazon", "Tesla", "Microsoft", "Apple", "Google"],clearable=False, multi=True,
+            options=[{"label":x, "value":x} for x in sorted(df.Company.unique())]),
+            className="six columns", style={"width":"50%"}),
+        #html del segundo dropdwon para eleig que variable numerica financiera quier ver en el desahboard:
+        html.Div(dcc.Dropdown(
+            id="numericdropdown", value="Total Revenues", clearable=False,
+            options=[{"label":x, "value":x} for x in sales_list]), className="six columns",
+            style={"width":"50%"})
+    #este cierra la fila y lleva classnmae row:
+    ], className="row"), ], className="custom-dropdown"),
 
-        #html del segundo dropdown para elegir que variable numerica fiannciera quiero ver ene l dashboard
-        html.Div(dccDropdown(
-            id="numericdropdown",value="Total Revenues",clearable=False,
-            options=[{"label":x,"value":x} for x in sales_list]),className="six columns",
-                 style={"width":"50%"})
-    ],className="row"),],className="custom-dropdwon"),
+    #Html de las graficas
+    html.Div([dcc.Graph(id="bar", figure={})]),
 
-    #html de las graficas
-    html.Div([dcc.Graph(id="bar",figure={})]),
+    html.Div([dcc.Graph(id="boxplot", figure={})]),
 
-    html.Div([dcc.Graph(id="boxplot",figure{})]),
-
-    html.Div(html.Div(id="table-container_1"),style={"marginBotton":"15px","marginTop":"0px"}),
+    html.Div(html.Div(id="table-container_1"), style={"marginBottom":"15px", "marginTop":"0px"}),
 ])
 
-#callback para actiailzar la grafica y la tabla
+#callback para actualizar la gráfica y la tabla
 @app.callback(
-    [Output("bar","figure"),Output("boxplot","figure"),Output("table-container_1","children")],
-    [Input("stockdropdown","value"),Input("numericdropdown","value")]
+    #Output con todo lo que devuelve el app: las 2 graficas actualziadas en modo figure y la tabla:
+    [Output("bar","figure"), Output("boxplot", "figure"), Output("table-container_1", "children")],
+    [Input("stockdropdown", "value"), Input("numericdropdown", "value")]
+    
 )
 
-#defincion para armar las graicas y la tabla
-def display_value(selected_stock,selected_numeric):
+#definición par armar las graficas y la tabla:
+#esto solo se hace por como viene este dataset, no se hace siempre
+def display_value(selected_stock, selected_numeric):
     if len(selected_stock)==0:
-        dfv_fltrd=df[df["Company"].isin(["Amazon","Tesla","Microsoft","Appple","Google"])]
+        dfv_fltrd=df[df["Company"].isin(["Amazon", "Tesla", "Microsoft", "Apple", "Google"])]
     else:
         dfv_fltrd=df[df["Company"].isin(selected_stock)]
 
-
-    #hacer la aprimera grafica de lineas
-    fig=px.line(dfv_fltrd,color="Company",x="Quarter",marker=True,y="selected_numeric",
-    width=1000,height=500)
-
-    #hacer titulo de la grafica variable
-    fig.update_layout(title=f"{seleceted_numeric} de {selected_stock}",
-                      xaxis_title="Quarters")
+    #haer la primera gráfica de lineas
+    fig=px.line(dfv_fltrd, color="Company", x="Quarter", markers=True, y=selected_numeric,
+               width=1000, height=500)
+    #hacer titulo de la grafica variable:
+    fig.update_layout(title=f"{selected_numeric} de {selected_stock}",
+                     xaxis_title="Quarters")
 
     fig.update_traces(line=dict(width=2))
 
-    #gradica de boxplot
-    fig2=px.boxp(dfv_fltrd,color="Company",x="Company",y=selected_numeric,width=1000,height=500)
+#grafica de boxplot
+    fig2=px.box(dfv_fltrd, color="Company", x="Company", y=selected_numeric, width=1000, height=500)
 
-    fig2.update_layout(title=f"{selected_numeric} de {delected_stock}")
+    fig2.update_layout(title=f"{selected_numeric} de {selected_stock}")
 
-#modificar el dataframe para poder hacerlo una tabla
+    fig2.update_traces(line=dict(width=2))
+
+    #modificar el dataframe para poder hacerlo una tabla
     df_reshaped = dfv_fltrd.pivot(index="Company",columns="Quarter",values=selected_numeric)
     df_reshaped2 = df_reshaped.reset_index()
 
@@ -89,9 +100,8 @@ def display_value(selected_stock,selected_numeric):
                               style_table={"maxWidth":1000},
                               style_header={"backgroundColor":"blue",
                                            "color":"white"},
-                              style_data_conditional={"backgroundColor":"white",
-                                                     "color":"black"}))
-
+                              style_data_conditional=[{"backgroundColor":"white",
+                                                     "color":"black"}]))
 #set server y correr el app 
 if _name_=="_main_":
     app.run_server(debug=False,host="0.0.0.0",port=10000)
